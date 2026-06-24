@@ -24,10 +24,32 @@ func TestEntryDev(t *testing.T) {
 }
 
 func TestEntryDevCustomBase(t *testing.T) {
-	v, _ := New(Config{DevURL: "http://x", DevBase: "/__vite/"})
+	v, err := New(Config{DevURL: "http://x", DevBase: "/__vite/"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	b := v.Entry("web/main.js")
 	if !slices.Equal(b.JS, []string{"/__vite/@vite/client", "/__vite/web/main.js"}) {
 		t.Fatalf("JS = %v", b.JS)
+	}
+}
+
+func TestNewProdCustomStaticURL(t *testing.T) {
+	fsys := fstest.MapFS{
+		"dist/.vite/manifest.json": &fstest.MapFile{
+			Data: []byte(`{"web/main.js":{"file":"assets/main-BBB.js","css":["assets/main-CSS.css"]}}`),
+		},
+	}
+	v, err := New(Config{Dist: fsys, DistDir: "dist", StaticURL: "/assets/"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := v.Entry("web/main.js")
+	if !slices.Equal(b.JS, []string{"/assets/assets/main-BBB.js"}) {
+		t.Fatalf("JS = %v", b.JS)
+	}
+	if !slices.Equal(b.CSS, []string{"/assets/assets/main-CSS.css"}) {
+		t.Fatalf("CSS = %v", b.CSS)
 	}
 }
 

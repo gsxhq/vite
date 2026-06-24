@@ -45,7 +45,7 @@ func main() {
         // b.Preloads as <link rel=modulepreload> — in your template of choice.
         _ = b
     })
-    go vite.NotifyReload(devURL) // dev-only; no-op when devURL == ""
+    vite.NotifyReload(devURL) // dev-only; no-op when devURL == ""
     http.ListenAndServe(":7777", mux)
 }
 ```
@@ -60,7 +60,7 @@ and leave it empty for production.
 
 | | Dev (`DevURL != ""`) | Prod (`DevURL == ""`) |
 |---|---|---|
-| **JS** | `["/<base>@vite/client", "/<base><entry>"]` | Hashed JS file from the manifest, prefixed with `StaticURL` |
+| **JS** | `["/<base>@vite/client", "/<base><entry>"]` — default `DevBase "/"`: `["/@vite/client", "/web/main.js"]` | Hashed JS file from the manifest, prefixed with `StaticURL` |
 | **CSS** | `[]` (Vite HMR injects styles) | Hashed CSS files from the manifest, prefixed with `StaticURL` |
 | **Preloads** | `[]` | Hashed JS chunks for `<link rel=modulepreload>`, prefixed with `StaticURL` |
 
