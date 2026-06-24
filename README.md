@@ -141,6 +141,20 @@ browser full-reload. Call it once after the HTTP server's listeners are up. A
 `""` devURL is a no-op. Internally spawns a goroutine with a brief retry loop to
 cover the cold-start race where the Go server beats Vite to the port.
 
+### Context helpers (v0.2.0)
+
+For passing the `*Vite` through the request context instead of as a parameter to
+every handler/template:
+
+```go
+func NewContext(ctx context.Context, v *Vite) context.Context // stash *Vite
+func FromContext(ctx context.Context) *Vite                   // retrieve (nil if absent)
+func (v *Vite) Middleware(next http.Handler) http.Handler     // inject per request
+```
+
+Wrap your handler with `v.Middleware(mux)`, then read the bundle anywhere with
+`vite.FromContext(ctx).Entry("web/main.js")`.
+
 ## License
 
 MIT
