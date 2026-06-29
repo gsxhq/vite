@@ -12,6 +12,10 @@ type Config struct {
 	Dist      fs.FS  // embedded prod build output (holds .vite/manifest.json); required in prod
 	DistDir   string // subpath within Dist for manifest+assets; default "."
 	StaticURL string // URL prefix prod assets serve under; default "/static/"
+	// Entries optionally maps a friendly entry name to its source path (the
+	// manifest key, e.g. package.json entryPoints). When set, Entry(name)
+	// resolves name → source before dev/prod lookup. nil → name is used as-is.
+	Entries map[string]string
 }
 
 // Vite resolves Vite entries to asset URLs. Safe for concurrent use; build once
@@ -22,6 +26,7 @@ type Vite struct {
 	staticURL string
 	distDir   string
 	dist      fs.FS
+	entries   map[string]string
 	manifest  map[string]manifestEntry
 }
 
@@ -35,6 +40,7 @@ func New(cfg Config) (*Vite, error) {
 		staticURL: orDefault(cfg.StaticURL, "/static/"),
 		distDir:   orDefault(cfg.DistDir, "."),
 		dist:      cfg.Dist,
+		entries:   cfg.Entries,
 	}
 	if !v.dev {
 		if cfg.Dist == nil {
@@ -52,14 +58,19 @@ func New(cfg Config) (*Vite, error) {
 // Dev reports whether the integration is in dev mode.
 func (v *Vite) Dev() bool { return v.dev }
 
-// Entry resolves one Vite entry (the manifest key / source path, e.g.
-// "web/main.js") to its asset URLs. Never panics; an unknown prod entry yields
-// an empty Bundle.
+// Entry resolves one Vite entry to its asset URLs. name may be a friendly name
+// registered in Config.Entries (resolved to its source path) or, when absent
+// from Entries (or Entries is nil), the manifest key / source path directly.
+// Never panics; an unknown prod entry yields an empty Bundle.
 func (v *Vite) Entry(name string) Bundle {
-	if v.dev {
-		return Bundle{JS: []string{v.devBase + "@vite/client", v.devBase + name}}
+	src := name
+	if s, ok := v.entries[name]; ok {
+		src = s
 	}
-	return resolve(v.manifest, name, v.staticURL)
+	if v.dev {
+		return Bundle{JS: []string{v.devBase + "@vite/client", v.devBase + src}}
+	}
+	return resolve(v.manifest, src, v.staticURL)
 }
 
 func orDefault(s, def string) string {

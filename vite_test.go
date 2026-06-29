@@ -86,3 +86,59 @@ func TestNewProdNilDistErrors(t *testing.T) {
 		t.Fatal("expected error for prod mode without Dist")
 	}
 }
+
+func TestEntryNamedDev(t *testing.T) {
+	v, err := New(Config{
+		DevURL:  "http://localhost:5173",
+		Entries: map[string]string{"markdown-editor": "js/markdown-editor/index.tsx"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := v.Entry("markdown-editor").JS
+	want := []string{"/@vite/client", "/js/markdown-editor/index.tsx"}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("dev named entry JS = %v, want %v", got, want)
+	}
+}
+
+func TestEntryNamedProd(t *testing.T) {
+	fsys := fstest.MapFS{
+		"dist/.vite/manifest.json": &fstest.MapFile{Data: []byte(`{
+			"js/markdown-editor/index.tsx": {"file":"assets/markdown-editor-abc.js","isEntry":true}
+		}`)},
+	}
+	v, err := New(Config{
+		Dist:    fsys,
+		DistDir: "dist",
+		Entries: map[string]string{"markdown-editor": "js/markdown-editor/index.tsx"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := v.Entry("markdown-editor").JS
+	if len(got) != 1 || got[0] != "/static/assets/markdown-editor-abc.js" {
+		t.Fatalf("prod named entry JS = %v, want [/static/assets/markdown-editor-abc.js]", got)
+	}
+}
+
+func TestEntryUnmappedNameFallsBackToDirectKey(t *testing.T) {
+	// A name absent from Entries resolves as a direct manifest key (today's behavior).
+	fsys := fstest.MapFS{
+		"dist/.vite/manifest.json": &fstest.MapFile{Data: []byte(`{
+			"web/main.js": {"file":"assets/main-xyz.js","isEntry":true}
+		}`)},
+	}
+	v, err := New(Config{
+		Dist:    fsys,
+		DistDir: "dist",
+		Entries: map[string]string{"other": "web/other.js"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := v.Entry("web/main.js").JS
+	if len(got) != 1 || got[0] != "/static/assets/main-xyz.js" {
+		t.Fatalf("unmapped direct key JS = %v, want [/static/assets/main-xyz.js]", got)
+	}
+}
