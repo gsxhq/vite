@@ -88,11 +88,12 @@ Running `go build` before `vite build` will fail or embed an empty/stale
 
 ```go
 type Config struct {
-    DevURL    string // running Vite dev server origin; "" → prod
-    DevBase   string // dev base path (vite.config base); default "/"
-    Dist      fs.FS  // embedded prod build output; required in prod
-    DistDir   string // subpath within Dist for manifest+assets; default "."
-    StaticURL string // URL prefix prod assets serve under; default "/static/"
+    DevURL    string            // running Vite dev server origin; "" → prod
+    DevBase   string            // dev base path (vite.config base); default "/"
+    Dist      fs.FS             // embedded prod build output; required in prod
+    DistDir   string            // subpath within Dist for manifest+assets; default "."
+    StaticURL string            // URL prefix prod assets serve under; default "/static/"
+    Entries   map[string]string // friendly-name → source path; Entry(name) resolves via this
 }
 ```
 
@@ -103,6 +104,7 @@ type Config struct {
 | `Dist` | — | Required in prod. Pass your `embed.FS`. Ignored in dev. |
 | `DistDir` | `"."` | Subpath within `Dist` where manifest and assets live. Use `"dist"` with `//go:embed all:dist`. |
 | `StaticURL` | `"/static/"` | URL prefix under which prod assets are served. |
+| `Entries` | `nil` | Optional friendly-name → source-path map (e.g. package.json entryPoints). `Entry(name)` resolves name → source before lookup; absent/nil → name used directly. |
 
 ### `func New(cfg Config) (*Vite, error)`
 
@@ -118,7 +120,7 @@ Reports whether the integration is in dev mode (`DevURL != ""`).
 ### `func (v *Vite) Entry(name string) Bundle`
 
 Resolves one Vite entry (the manifest key / source path, e.g. `"web/main.js"`)
-to its asset URLs. Never panics; an unknown prod entry yields an empty `Bundle`.
+to its asset URLs. The `name` parameter may be a friendly key registered in `Config.Entries`, which is resolved to its source path before manifest lookup. Never panics; an unknown prod entry yields an empty `Bundle`.
 
 ```go
 type Bundle struct {
